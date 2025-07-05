@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IXBT {
+  function mint(address to, uint256 amount) external;
+}
+
+contract XPayChain {
+  address public owner;
+  IXBT    public xbtToken;
+  uint256 public rewardRate = 1000; // 1 AVAX = 1000 XBT
+
+  mapping(address => bool) internal blacklisted;
+
+  event PaymentReceived(
+    address indexed from,
+    uint256 avaxAmount,
+    uint256 xbtReward,
+    string purpose
+  );
+  event IdentityAnchored(
+    address indexed user,
+    string    claimHash,
+    uint256   timestamp
+  );
+
+  modifier onlyOwner() {
+    require(msg.sender == owner, "Not authorized");
+    _;
+  }
+
+  modifier notBlacklisted(address user) {
+    require(!blacklisted[user], "Address blacklisted");
+    _;
+  }
+
+  constructor(address _xbtToken) {
+    owner    = msg.sender;
+    xbtToken = IXBT(_xbtToken);
+  }
+
+  receive() external payable notBlacklisted(msg.sender) {
+    uint256 reward = msg.value * rewardRate;
+    xbtToken.mint(msg.sender, reward);
+    emit PaymentReceived(msg.sender, msg.value, reward, "Generic payment");
+  }
+
+  function anchorIdentity(string memory claimHash)
+    external
+    notBlacklisted(msg.sender)
+  {
+    emit IdentityAnch
